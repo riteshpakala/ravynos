@@ -174,7 +174,7 @@ genassym.o: $(SOURCE_DIR)/$(COMPONENT)/$(GENASSYM_LOCATION)/genassym.c
 	$(_v)${GENASSYM_KCC} ${CFLAGS} ${CFLAGS_NOLTO_FLAG} -MD -S -o ${@} ${INCFLAGS} $<
 
 assym.s: genassym.o
-	$(_v)sed -e '/^[[:space:]]*DEFINITION__define__/!d;{N;s/\n//;}' -e 's/^[[:space:]]*DEFINITION__define__\([^:]*\):.*ascii.*\"[\$$]*\([-0-9\#]*\)\".*$$/#define \1 \2/' -e 'p'  -e 's/#//2' -e 's/^[[:space:]]*#define \([A-Za-z0-9_]*\)[[:space:]]*[\$$#]*\([-0-9]*\).*$$/#define \1_NUM \2/' genassym.o > $@
+	$(_v)sed -e '/^[[:space:]]*DEFINITION__define__/!d;{N;s/\n//;}' -e 's/\.byte[[:space:]]*48[[:space:]]*$$/.ascii "0"/' -e 's/\.byte[[:space:]]*49[[:space:]]*$$/.ascii "1"/' -e 's/\.byte[[:space:]]*50[[:space:]]*$$/.ascii "2"/' -e 's/\.byte[[:space:]]*51[[:space:]]*$$/.ascii "3"/' -e 's/\.byte[[:space:]]*52[[:space:]]*$$/.ascii "4"/' -e 's/\.byte[[:space:]]*53[[:space:]]*$$/.ascii "5"/' -e 's/\.byte[[:space:]]*54[[:space:]]*$$/.ascii "6"/' -e 's/\.byte[[:space:]]*55[[:space:]]*$$/.ascii "7"/' -e 's/\.byte[[:space:]]*56[[:space:]]*$$/.ascii "8"/' -e 's/\.byte[[:space:]]*57[[:space:]]*$$/.ascii "9"/' -e 's/^[[:space:]]*DEFINITION__define__\([^:]*\):.*ascii.*\"[\$$]*\([-0-9\#]*\)\".*$$/#define \1 \2/' -e 'p'  -e 's/#//2' -e 's/^[[:space:]]*#define \([A-Za-z0-9_]*\)[[:space:]]*[\$$#]*\([-0-9]*\).*$$/#define \1_NUM \2/' genassym.o > $@
 
 ${SOBJS}: assym.s
 

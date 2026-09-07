@@ -4,3 +4,4 @@ pexpert/arm/pe_identify_machine.c      standard
 pexpert/arm/pe_init.c                  standard
 pexpert/arm/pe_kprintf.c               standard
 pexpert/arm/pe_serial.c                standard
+pexpert/arm/pe_gicv2.c                 standard

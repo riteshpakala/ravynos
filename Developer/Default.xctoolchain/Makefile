@@ -6,6 +6,15 @@ GNU_CONFIGURE_ARGS = --prefix=/usr --sysconfdir=/etc --bindir=/bin \
 		--sbindir=/sbin --localstatedir=/var
 
 CFLAGS += -I${.CURDIR}/include
+
+# Host libraries that macOS no longer ships headers for (OpenSSL) come from
+# Homebrew when building on a Mac.
+.if "${.MAKE.OS}" == "Darwin"
+HOMEBREW_PREFIX != brew --prefix 2>/dev/null || echo /opt/homebrew
+CFLAGS += -I${HOMEBREW_PREFIX}/opt/openssl@3/include
+LDFLAGS += -L${HOMEBREW_PREFIX}/opt/openssl@3/lib
+.export LDFLAGS
+.endif
 .export CFLAGS
 
 all: ${TOOLCHAIN} ${.OBJDIR}/tapi/Version.inc

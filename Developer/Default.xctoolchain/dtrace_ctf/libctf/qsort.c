@@ -174,7 +174,7 @@ loop:
 }
 
 void
-qsort_r(void *a, size_t n, size_t es, cmp_t *cmp, void *thunk)
+ctf_qsort_r(void *a, size_t n, size_t es, cmp_t *cmp, void *thunk)
 {
 	local_qsort_r(a, n, es, cmp, thunk);
 }

@@ -62,6 +62,49 @@ runtime:
 	  ${RAVYN_SDKROOT}/usr/local/lib/kernel/libcc_kext.a
 
 
+# Kernel-only runtime for a non-default target architecture (arm64 bring-up):
+# just the compiler-rt builtins, built into a per-arch objdir and installed
+# next to the per-arch libfirehose_kernel so the x86_64 SDK stays intact.
+KERNEL_RT_OBJDIR = ${.OBJDIR}/llvm_target-${MachOArch}/compiler-rt
+KERNEL_RT_LIBDIR = ${RAVYN_SDKROOT}/usr/local/lib/kernel/${MachOArch}
+
+kernel_runtime:
+	DEVELOPER_DIR=${ROOT_BINARY_DIR}/Developer \
+	PATH=${TOOLCHAIN}/usr/bin:${PATH} \
+	SDKROOT=${RAVYN_SDKROOT} CFLAGS=${RUNTIME_FLAGS} \
+	cmake -S ${DEVEL}/Default.xctoolchain/llvm/compiler-rt \
+	-B ${KERNEL_RT_OBJDIR} -Wno-dev -GNinja \
+	-DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+	-DCMAKE_C_COMPILER=${CC} -DCMAKE_CXX_COMPILER=${CXX} \
+	-DCMAKE_ASM_COMPILER=${CC} -DCMAKE_C_COMPILER_WORKS=ON \
+	-DCMAKE_CXX_COMPILER_WORKS=ON -DCMAKE_SYSROOT=${RAVYN_SDKROOT} \
+	-DCMAKE_LINKER=${LD} -DCMAKE_SYSTEM_NAME=Darwin \
+	-DCMAKE_SYSTEM_PROCESSOR=${MachOArch} \
+	-DCMAKE_OSX_ARCHITECTURES=${MachOArch} \
+	-DCMAKE_ASM_COMPILER_TARGET=${CpuArch}-apple-darwin \
+	-DCMAKE_C_COMPILER_TARGET=${CpuArch}-apple-darwin \
+	-DCMAKE_CXX_COMPILER_TARGET=${CpuArch}-apple-darwin \
+	-DCMAKE_C_CFLAGS_INIT=${RUNTIME_FLAGS} -DCMAKE_LIPO=${LIPO} \
+	-DCMAKE_INSTALL_PREFIX=${KERNEL_RT_OBJDIR}/install \
+	-DCOMPILER_RT_ENABLE_WERROR=OFF -DCOMPILER_RT_HAS_G_FLAG=ON \
+	-DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD=${BuildArch} \
+	-DCOMPILER_RT_DEFAULT_TARGET_ONLY=ON -DCOMPILER_RT_OS_DIR=ravynos \
+	-DDARWIN_osx_ARCHS=${MachOArch} -DDARWIN_osx_BUILTIN_ARCHS=${MachOArch} \
+	-DCOMPILER_RT_BUILD_BUILTINS=ON -DCOMPILER_RT_BUILD_SANITIZERS=OFF \
+	-DCOMPILER_RT_BUILD_PROFILE=OFF -DCOMPILER_RT_BUILD_XRAY=OFF \
+	-DCOMPILER_RT_BUILD_LIBFUZZER=OFF -DCOMPILER_RT_BUILD_MEMPROF=OFF \
+	-DCOMPILER_RT_BUILD_ORC=OFF -DCOMPILER_RT_EXTERNALIZE_DEBUGINFO=OFF \
+	-DCOMPILER_RT_HAS_ATOMIC_KEYWORD=ON -DCOMPILER_RT_EXCLUDE_ATOMIC_BUILTIN=OFF
+	# Only the kernel builtins: the full "all" also builds userland pieces
+	# (os_version_check.c) that need libdispatch headers the SDK lacks yet.
+	env MAKEFLAGS="" .MAKEFLAGS="" ninja -C${KERNEL_RT_OBJDIR} clang_rt.cc_kext
+	mkdir -p ${KERNEL_RT_LIBDIR}
+	if [ -f ${KERNEL_RT_OBJDIR}/lib/ravynos/libclang_rt.cc_kext.a ]; then \
+	  cp -f ${KERNEL_RT_OBJDIR}/lib/ravynos/libclang_rt.cc_kext.a ${KERNEL_RT_LIBDIR}/libcc_kext.a; \
+	else \
+	  cp -f ${KERNEL_RT_OBJDIR}/lib/builtins/libclang_rt.cc_kext_${MachOArch}_osx.a ${KERNEL_RT_LIBDIR}/libcc_kext.a; \
+	fi
+
 # ------------------------------------------------------------------------
 #                           LIBUNWIND
 # ------------------------------------------------------------------------

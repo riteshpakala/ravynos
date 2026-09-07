@@ -81,6 +81,10 @@ CTFMERGE_SRCS =	alist.cpp \
 CTFMERGE_OBJS = ${CTFMERGE_SRCS:S/.cpp$/.o/:%.c=%.o}
 
 LDFLAGS += -L${TOOLCHAIN}/usr/lib -lelf -ldwarf -lctf -lz
+.if "${.MAKE.OS}" == "Darwin"
+# DenseMap etc. come from the just-built host LLVM
+LDFLAGS += -lLLVMSupport -lLLVMDemangle -lz -lcurses -lm
+.endif
 .if "${.MAKE.OS}" == "Linux"
 CFLAGS += -D__unused="" -I/usr/include/c++/11 -I/usr/include/${CpuArch}-linux-gnu/c++/11
 LDFLAGS += -L/usr/lib/llvm-15/lib -lLLVM -ldispatch

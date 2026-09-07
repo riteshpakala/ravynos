@@ -343,4 +343,10 @@ extern int _libctf_debug;		/* debugging messages enabled */
 }
 #endif
 
+
+/* FreeBSD-style qsort_r (cmp, thunk) from libctf/qsort.c, renamed so it does
+ * not clash with the host libc's qsort_r declaration on macOS. */
+extern void ctf_qsort_r(void *, size_t, size_t,
+    int (*)(const void *, const void *, void *), void *);
+
 #endif	/* _CTF_IMPL_H */

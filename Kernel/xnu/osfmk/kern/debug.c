@@ -296,12 +296,15 @@ panic_init(void)
 
 	/************** FIXME FIXME FIXME **********
          * Remove this block once done debugging!!
+         * (x86_64 only: it halts every other target in the debugger at boot)
          *******************************************/
+#if defined(__x86_64__)
 	debug_boot_arg = 0x44;
 	halt_in_debugger = 1;
 	kdebug_serial = TRUE;
 	debug_boot_arg_inited = TRUE;
 	debugger_is_panic = TRUE;
+#endif
 	/******************************************/
 
 #if ((CONFIG_EMBEDDED && MACH_KDP) || defined(__x86_64__))

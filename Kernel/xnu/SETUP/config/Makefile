@@ -12,9 +12,11 @@ OBJS = externs.o main.o mkheaders.o mkioconf.o mkmakefile.o	\
 CFLAGS = -g -O0 -I$(SOURCE) -I.
 LDFLAGS =
 ifeq ($(OPSYS),Linux)
+ifeq ($(shell uname -s),Linux)
 LDFLAGS += -lbsd
 endif
-ifeq ($(shell uname -s),"Darwin")
+endif
+ifeq ($(shell uname -s),Darwin)
 	CFLAGS += -isysroot $(HOST_SDKROOT) -mmacosx-version-min=$(HOST_OS_VERSION)
 	LDFLAGS += -isysroot $(HOST_SDKROOT) -mmacosx-version-min=$(HOST_OS_VERSION)
 endif

@@ -109,8 +109,17 @@ endif
 $(TARGET)/$(KERNEL_FILE_NAME).dSYM: $(TARGET)/$(KERNEL_FILE_NAME).unstripped
 	$(call makelog,$(ColorH)DSYMUTIL$(Color0)      $(ColorLF)$(@F)$(Color0))
 	$(_v)$(DSYMUTIL) $(DSYMUTIL_FLAGS) $< -o $@
-	$(_v)$(MV) $@/$(DSYMDWARFDIR)/$(KERNEL_FILE_NAME).unstripped $@/$(DSYMDWARFDIR)/$(KERNEL_FILE_NAME)
+	$(_v)if [ -f $@/$(DSYMDWARFDIR)/$(KERNEL_FILE_NAME).unstripped ]; then \
+		$(MV) $@/$(DSYMDWARFDIR)/$(KERNEL_FILE_NAME).unstripped $@/$(DSYMDWARFDIR)/$(KERNEL_FILE_NAME); \
+	else \
+		echo "warning: dsymutil produced no DWARF for $(KERNEL_FILE_NAME); keeping the unstripped kernel as debug info"; \
+		mkdir -p $@/$(DSYMDWARFDIR) && cp -f $< $@/$(DSYMDWARFDIR)/$(KERNEL_FILE_NAME); \
+	fi
 	$(_v)$(TOUCH) $@
+
+# ravynOS: the PGO profile runtime linked into the kernel. Overridden (empty)
+# for target architectures whose compiler-rt profile library is not built.
+LD_KERNEL_PROFILE_LIBS ?= -L$(OBJROOT)/../../Libraries/llvm_target/compiler-rt/lib/ravynos -lclang_rt.profile_osx
 
 $(TARGET)/$(KERNEL_FILE_NAME).unstripped: $(addprefix $(TARGET)/,$(foreach component,$(COMPONENT_LIST),$(component)/$(CURRENT_KERNEL_CONFIG)/$(component).filelist)) lastkerneldataconst.o lastkernelconstructor.o nonlto.o $(SRCROOT)/config/version.c $(SRCROOT)/config/MasterVersion .LDFLAGS $(filter %/MakeInc.kernel,$(MAKEFILE_LIST))
 	$(_v)${MAKE} -f $(firstword $(MAKEFILE_LIST)) version.o
@@ -141,7 +150,7 @@ ifeq ($(PRE_LTO),1)
 else
 	$(call makelog,$(ColorL)LD$(Color0)  $(ColorLF)$(@F)$(Color0))
 	$(_v)$(CAT) $(filter %.filelist,$+) < /dev/null > link.filelist
-	$(_v)$(LD) $(LDFLAGS_KERNEL) $(LDFLAGS_KERNEL_EXPORTS) -filelist link.filelist version.o $(filter %.o,$+) -o $@ $(LD_KERNEL_LIBS) $(LD_KERNEL_ARCHIVES) -L$(OBJROOT)/../../Libraries/llvm_target/compiler-rt/lib/ravynos -lclang_rt.profile_osx
+	$(_v)$(LD) $(LDFLAGS_KERNEL) $(LDFLAGS_KERNEL_EXPORTS) -filelist link.filelist version.o $(filter %.o,$+) -o $@ $(LD_KERNEL_LIBS) $(LD_KERNEL_ARCHIVES) $(LD_KERNEL_PROFILE_LIBS)
 endif
 
 

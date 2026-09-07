@@ -41,6 +41,8 @@ void	*malloc(size_t __size) __result_use_check __alloc_size(1);
 void	*calloc(size_t __count, size_t __size) __result_use_check __alloc_size(1,2);
 void	 free(void *);
 void	*realloc(void *__ptr, size_t __size) __result_use_check __alloc_size(2);
+void	*reallocf(void *ptr, size_t size) __result_use_check __alloc_size(2);
+
 #if !defined(_ANSI_SOURCE) && (!defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE))
 void	*valloc(size_t) __alloc_size(1);
 #endif // !defined(_ANSI_SOURCE) && (!defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE))

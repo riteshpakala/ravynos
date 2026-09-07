@@ -1,0 +1,4 @@
+#!/bin/sh
+# ravynOS host-tool wrapper: run the system codesign without the build's DEVELOPER_DIR.
+unset DEVELOPER_DIR SDKROOT
+exec /usr/bin/codesign "$@"

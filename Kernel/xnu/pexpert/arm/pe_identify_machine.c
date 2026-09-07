@@ -11,6 +11,9 @@
 #include <pexpert/arm/board_config.h>
 #elif defined(__arm64__)
 #include <pexpert/arm64/board_config.h>
+#if defined(GICV2)
+#include <pexpert/arm64/GICv2.h>
+#endif
 #endif
 
 #include <kern/clock.h>
@@ -336,6 +339,14 @@ static struct tbd_ops    t8030_funcs = {NULL, NULL, NULL};
 static struct tbd_ops    bcm2837_funcs = {NULL, NULL, NULL};
 #endif /* defined(ARM_BOARD_CLASS_BCM2837) */
 
+#if defined(ARM_BOARD_CLASS_BCM2712)
+/*
+ * The Pi 5 uses the ARM generic timer, so the generic FIQ handler and the
+ * architected CNTP_* registers do the work; no SoC-specific decrementer.
+ */
+static struct tbd_ops    bcm2712_funcs = {&fleh_fiq_generic, NULL, NULL};
+#endif /* defined(ARM_BOARD_CLASS_BCM2712) */
+
 vm_offset_t     gPicBase;
 vm_offset_t     gTimerBase;
 vm_offset_t     gSocPhys;
@@ -647,8 +658,13 @@ pe_arm_map_interrupt_controller(void)
 		kprintf("pe_arm_map_interrupt_controller: gTimerBase: 0x%lx\n", (unsigned long)gTimerBase);
 	}
 	if (gTimerBase == 0) {
+#if defined(ARM_BOARD_CLASS_BCM2712)
+		/* The ARM generic timer is a system-register interface; no MMIO. */
+		kprintf("pe_arm_map_interrupt_controller: using the ARM generic timer (no MMIO timer)\n");
+#else
 		kprintf("pe_arm_map_interrupt_controller: failed to find the timer.\n");
 		return 0;
+#endif
 	}
 
 	return 1;
@@ -776,6 +792,24 @@ pe_arm_init_timer(void *args)
 #if defined(ARM_BOARD_CLASS_BCM2837)
 	if (!strcmp(gPESoCDeviceType, "bcm2837-io")) {
 		tbd_funcs = &bcm2837_funcs;
+	} else
+#endif
+#if defined(ARM_BOARD_CLASS_BCM2712)
+	if (!strcmp(gPESoCDeviceType, "bcm2712-io") ||
+	    !strcmp(gPESoCDeviceType, "qemu-virt-io")) {
+#if defined(GICV2)
+		if (args != NULL) {
+			/* Boot CPU: bring up the GIC and take IRQs from here on. */
+			if (!pe_gicv2_init(soc_phys)) {
+				return 0;
+			}
+			ml_install_interrupt_handler(NULL, 0, NULL, pe_gicv2_irq_handler, NULL);
+		} else {
+			/* Secondary CPU: only the banked CPU interface needs setting up. */
+			pe_gicv2_cpu_init();
+		}
+#endif /* GICV2 */
+		tbd_funcs = &bcm2712_funcs;
 	} else
 #endif
 	return 0;

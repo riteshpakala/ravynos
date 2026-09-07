@@ -316,4 +316,32 @@ typedef void (*os_function_t)(void *_Nullable);
 typedef void (^os_block_t)(void);
 #endif
 
+
+/* Annotation macros newer macOS SDK headers expect from <os/base.h>;
+ * harmless no-ops for this toolchain's consumers. (ravynOS addition) */
+#ifndef OS_ASSUME_PTR_ABI_SINGLE_BEGIN
+#define OS_ASSUME_PTR_ABI_SINGLE_BEGIN
+#endif
+#ifndef OS_ASSUME_PTR_ABI_SINGLE_END
+#define OS_ASSUME_PTR_ABI_SINGLE_END
+#endif
+#ifndef OS_COUNTED_BY
+#define OS_COUNTED_BY(N)
+#endif
+#ifndef OS_HEADER_INDEXABLE
+#define OS_HEADER_INDEXABLE
+#endif
+#ifndef OS_SIZED_BY
+#define OS_SIZED_BY(N)
+#endif
+#ifndef OS_SWIFT_NONISOLATED
+#define OS_SWIFT_NONISOLATED
+#endif
+#ifndef OS_SWIFT_UNAVAILABLE_FROM_ASYNC
+#define OS_SWIFT_UNAVAILABLE_FROM_ASYNC(_msg)
+#endif
+#ifndef OS_UNSAFE_INDEXABLE
+#define OS_UNSAFE_INDEXABLE
+#endif
+
 #endif // __OS_BASE__

@@ -1,28 +1,35 @@
 CC := ${HOST_CC}
 CXX := ${HOST_CXX}
+NINJA ?= ninja
 
 all: ${TOOLS}/clang
 
 .if "${.MAKE.OS}" != "Darwin"
 CFLAGS = -UHAVE_MACH_MACH_H -UAPPLE -U__APPLE__ -UHAVE_DECL_ARC4RANDOM
 CXXFLAGS = ${CFLAGS} -U_GLIBCXX_USE_CXX11_ABI -D_GLIBCXX_USE_CXX11_ABI=0
+.else
+# The host LLVM builds against the plain macOS SDK; the toolchain include
+# directory (ravynOS mach-o/mach headers) must not leak into it.
+CFLAGS =
+CXXFLAGS =
 .endif
 
 ${TOOLCHAIN}/usr/lib/libLLVM.a ${TOOLCHAIN}/usr/lib/libtapi.so \
 ${TOOLS}/clang ${TOOLS}/clang++: ${TOOLCHAIN}/usr/libexec/migcom ${.CURDIR}/Makefile
-	cmake -S ${.CURDIR}/llvm -B ${.OBJDIR}/../llvm_host -Wno-dev \
+	cmake -S ${.CURDIR}/llvm -B ${.OBJDIR}/../llvm_host -Wno-dev -GNinja \
 	-DCMAKE_BUILD_TYPE=Release \
 	-C${.CURDIR}/clang/cmake/caches/Apple-stage1.cmake \
 	-DCMAKE_C_COMPILER=${HOST_CC} \
 	-DCMAKE_CXX_COMPILER=${HOST_CXX} \
-	-DCMAKE_C_FLAGS=${CFLAGS} \
+	"-DCMAKE_C_FLAGS=${CFLAGS}" \
 	"-DCMAKE_CXX_FLAGS=${CXXFLAGS}" \
+	-DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
 	-DCMAKE_CXX_STANDARD=17 \
 	-DCMAKE_CXX_STANDARD_REQUIRED=ON \
 	-DCMAKE_INSTALL_PREFIX=${TOOLCHAIN}/usr \
 	-DLLVM_BOOTSTRAP_DEFAULT_TARGET_TRIPLE=${CpuArch}-apple-darwin \
 	-DLLVM_DEFAULT_TARGET_TRIPLE=${CpuArch}-apple-darwin \
-	-DLLVM_TARGETS_TO_BUILD=${BuildArch} \
+	"-DLLVM_TARGETS_TO_BUILD=${LLVM_HOST_TARGETS}" \
 	-DLLVM_ENABLE_LTO=OFF \
 	-DLLVM_APPEND_VC_REV=OFF \
 	-DLLVM_ENABLE_PROJECTS="clang;tapi;lld" \
@@ -47,7 +54,7 @@ ${TOOLS}/clang ${TOOLS}/clang++: ${TOOLCHAIN}/usr/libexec/migcom ${.CURDIR}/Make
 	-DCLANG_ENABLE_FORMAT=OFF \
 	-DCLANG_INCLUDE_TESTS=OFF \
 	-DTAPI_INCLUDE_TESTS=OFF
-	CC=${HOST_CC} CXX=${HOST_CXX} ${MAKE} -C${.OBJDIR}/../llvm_host all \
+	CC=${HOST_CC} CXX=${HOST_CXX} ${NINJA} -C${.OBJDIR}/../llvm_host all \
 	   llvm-ar llvm-nm llvm-ranlib llvm-strip dsymutil llvm-lipo \
 	   llvm-libtool-darwin llvm-objdump llvm-otool
 	cp -Rf ${.OBJDIR}/../llvm_host/bin ${TOOLCHAIN}/usr/

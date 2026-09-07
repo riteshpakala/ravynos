@@ -1014,8 +1014,34 @@ ml_install_interrupt_handler(
 	cpu_data_ptr->interrupts_enabled = TRUE;
 	(void) ml_set_interrupts_enabled(current_state);
 
+#if defined(BCM2712)
+	/*
+	 * The GICv2 handler is installed by pexpert long before IOKit and the
+	 * console exist (nub == NULL); only a real platform driver acquires
+	 * the screen.
+	 */
+	if (nub == NULL) {
+		return;
+	}
+#endif
 	initialize_screen(NULL, kPEAcquireScreen);
 }
+
+#if defined(BCM2712)
+/*
+ * On a GIC the ARM generic timer PPI arrives as an IRQ rather than the FIQ
+ * xnu's AIC-shaped timer path expects. The pexpert GICv2 driver calls this
+ * from its IRQ handler; it mirrors the timer branch of sleh_fiq().
+ */
+void
+ml_arm_generic_timer_irq(void)
+{
+	cpu_data_t *cdp = getCpuDatap();
+
+	cdp->cpu_decrementer = -1; /* Large */
+	rtclock_intr(TRUE);
+}
+#endif /* BCM2712 */
 
 /*
  *	Routine:        ml_init_interrupt
@@ -2100,7 +2126,7 @@ fiq_context_init(boolean_t enable_fiq __unused)
 void
 fiq_context_bootstrap(boolean_t enable_fiq)
 {
-#if defined(APPLE_ARM64_ARCH_FAMILY) || defined(BCM2837)
+#if defined(APPLE_ARM64_ARCH_FAMILY) || defined(BCM2837) || defined(BCM2712)
 	/* Could fill in our own ops here, if we needed them */
 	uint64_t        ticks_per_sec, ticks_per_event;
 	uint32_t        bit_index;

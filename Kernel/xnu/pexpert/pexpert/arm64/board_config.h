@@ -280,4 +280,20 @@
 #define CORE_NCTRS 8 /* Placeholder; KPC is not enabled for this target */
 #endif  /* ARM64_BOARD_CONFIG_BCM2837 */
 
+#ifdef ARM64_BOARD_CONFIG_BCM2712
+/*
+ * Raspberry Pi 5: 4x Cortex-A76 (512 KiB L2 per core, 2 MiB shared L3),
+ * GIC-400, PL011 UART, ARM generic timer. Booted through UEFI by the
+ * ravynOS booter; see pexpert/arm64/BCM2712.h.
+ */
+#define BCM2712
+#define BCM2712_BRINGUP
+#define ARM_ARCH_TIMER
+#include <pexpert/arm64/BCM2712.h>
+#define __ARM_L2CACHE_SIZE_LOG__ 19
+#define ARM_BOARD_CLASS_BCM2712
+#define CPU_COUNT 4
+#define CORE_NCTRS 8 /* Placeholder; KPC is not enabled for this target */
+#endif  /* ARM64_BOARD_CONFIG_BCM2712 */
+
 #endif /* ! _PEXPERT_ARM_BOARD_CONFIG_H */

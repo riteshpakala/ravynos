@@ -10,11 +10,14 @@ OBJS = replacecontents.o
 
 CFLAGS = -g -O0 -I$(SOURCE) -I.
 LDFLAGS =
-ifeq ($(shell uname -s),"Darwin")
+ifeq ($(shell uname -s),Darwin)
 	CFLAGS += -isysroot $(HOST_SDKROOT) -mmacosx-version-min=$(HOST_OS_VERSION)
 	LDFLAGS += -isysroot $(HOST_SDKROOT) -mmacosx-version-min=$(HOST_OS_VERSION)
 else
-LDFLAGS += -lbsd -L${TOOLCHAIN}/usr/lib
+ifeq ($(shell uname -s),Linux)
+LDFLAGS += -lbsd
+endif
+LDFLAGS += -L${TOOLCHAIN}/usr/lib
 endif
 
 WARNFLAGS = -Wall

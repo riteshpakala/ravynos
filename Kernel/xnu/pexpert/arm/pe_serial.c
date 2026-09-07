@@ -811,6 +811,89 @@ SECURITY_READ_ONLY_LATE(static struct pe_serial_functions) pi3_uart_serial_funct
 };
 
 #endif /* PI3_UART */
+
+/****************************************************************************/
+#ifdef PL011_UART
+/*
+ * ARM PrimeCell PL011: the Raspberry Pi 5 debug UART and QEMU virt's UART.
+ * The firmware (UEFI) has already programmed the baud rate, so only the
+ * data and flag registers are used; init just makes sure the UART, its
+ * transmitter and receiver are enabled and that no interrupts are armed.
+ * Polled, like every other console here.
+ */
+vm_offset_t pl011_uart_base = 0;
+
+#define PL011_REG(off)   (*(volatile uint32_t *)(pl011_uart_base + (off)))
+#define PL011_DR         PL011_REG(0x00)
+#define PL011_FR         PL011_REG(0x18)
+#define PL011_LCRH       PL011_REG(0x2C)
+#define PL011_CR         PL011_REG(0x30)
+#define PL011_IMSC       PL011_REG(0x38)
+#define PL011_ICR        PL011_REG(0x44)
+
+#define PL011_FR_BUSY    (1 << 3)
+#define PL011_FR_RXFE    (1 << 4)
+#define PL011_FR_TXFF    (1 << 5)
+#define PL011_CR_UARTEN  (1 << 0)
+#define PL011_CR_TXE     (1 << 8)
+#define PL011_CR_RXE     (1 << 9)
+#define PL011_LCRH_FEN   (1 << 4)
+
+static int
+pl011_uart_tr0(void)
+{
+	return (PL011_FR & PL011_FR_TXFF) == 0;
+}
+
+static void
+pl011_uart_td0(int c)
+{
+	PL011_DR = (uint32_t)c & 0xff;
+}
+
+static int
+pl011_uart_rr0(void)
+{
+	return (PL011_FR & PL011_FR_RXFE) == 0;
+}
+
+static int
+pl011_uart_rd0(void)
+{
+	return (int)(PL011_DR & 0xff);
+}
+
+static void
+pl011_uart_init(void)
+{
+	const uint32_t enable = PL011_CR_UARTEN | PL011_CR_TXE | PL011_CR_RXE;
+	uint32_t cr = PL011_CR;
+
+	/* Polled operation only: no interrupts, nothing pending. */
+	PL011_IMSC = 0;
+	PL011_ICR = 0x7ff;
+
+	if ((cr & enable) != enable) {
+		/* Wait for any in-flight character before touching the control register. */
+		while (PL011_FR & PL011_FR_BUSY) {
+			;
+		}
+		PL011_LCRH |= PL011_LCRH_FEN;
+		PL011_CR = cr | enable;
+	}
+}
+
+SECURITY_READ_ONLY_LATE(static struct pe_serial_functions) pl011_uart_serial_functions =
+{
+	.uart_init = pl011_uart_init,
+	.uart_set_baud_rate = NULL,
+	.tr0 = pl011_uart_tr0,
+	.td0 = pl011_uart_td0,
+	.rr0 = pl011_uart_rr0,
+	.rd0 = pl011_uart_rd0
+};
+
+#endif /* PL011_UART */
 /*****************************************************************************/
 
 static void
@@ -872,6 +955,20 @@ serial_init(void)
 		register_serial_functions(&pi3_uart_serial_functions);
 	}
 #endif /* PI3_UART */
+
+#ifdef PL011_UART
+	/*
+	 * The ravynOS booter names the console UART node "pl011" so the
+	 * generic "uart0" probing below does not map it a second time.
+	 */
+	if (DTFindEntry("name", "pl011", &entryP) == kSuccess) {
+		DTGetProperty(entryP, "reg", (void **)&reg_prop, &prop_size);
+		pl011_uart_base = ml_io_map(soc_base + *reg_prop, *(reg_prop + 1));
+		if (pl011_uart_base != 0) {
+			register_serial_functions(&pl011_uart_serial_functions);
+		}
+	}
+#endif /* PL011_UART */
 
 #ifdef DOCKFIFO_UART
 	uint32_t no_dockfifo_uart = 0;

@@ -1,3 +1,19 @@
+# libtapi is linked with -allowable_client ld; identify ourselves as ld
+.if "${.MAKE.OS}" == "Darwin"
+LD64_CLIENT_FLAGS = -Wl,-client_name,ld
+# libxar needs these on a macOS host (OpenSSL from Homebrew)
+LDFLAGS += -L${HOMEBREW_PREFIX:U/opt/homebrew}/opt/openssl@3/lib -lcrypto -lssl -lxml2 -lz
+.else
+LD64_CLIENT_FLAGS =
+.endif
+
+# tapi is a .dylib on macOS hosts and a .so on Linux hosts
+.if "${.MAKE.OS}" == "Darwin"
+TAPI_LIB = libtapi.dylib
+.else
+TAPI_LIB = libtapi.so
+.endif
+
 CXX := ${HOST_CXX}
 CC := ${HOST_CC}
 FLAGS += -D__DARWIN_UNIX03 -D_DARWIN_C_SOURCE -Wno-\#warnings \
@@ -101,7 +117,7 @@ PASSES_OBJS = ${PASSES_SRCS:%.cpp=%.o}
 TARGET_DIRS = ${.OBJDIR}/ld/parsers ${.OBJDIR}/ld/code-sign-blobs \
 	      ${.OBJDIR}/ld/passes/stubs
 DEPENDS = ${TARGET_DIRS} ${TOOLCHAIN}/usr/lib/libxar.a \
-	  ${.OBJDIR}/../../../llvm_host/lib/libtapi.so
+	  ${.OBJDIR}/../../../llvm_host/lib/${TAPI_LIB}
 
 all: ${TOOLS}/ld64
 
@@ -120,6 +136,6 @@ ${.OBJDIR}/corecrypto: ${CC_SRC_DIR}
 
 ${TOOLS}/ld64: ${DEPENDS} ${.OBJDIR}/corecrypto ${.OBJDIR}/ld/configure.h \
 		${LD_OBJS} ${PARSERS_OBJS} ${PASSES_OBJS}
-	${CXX} -o ${.TARGET} ${LD_OBJS} ${PARSERS_OBJS} \
+	${CXX} -o ${.TARGET} ${LD64_CLIENT_FLAGS} ${LD_OBJS} ${PARSERS_OBJS} \
 		${PASSES_OBJS} ${LDFLAGS}
 

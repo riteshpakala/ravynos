@@ -12,7 +12,7 @@ CFLAGS = -g -O0 -Wno-implicit-function-declaration \
 	-I$(SRCROOT)/../../Developer/Default.xctoolchain/include \
 	-I$(SOURCE) -I. 
 LDFLAGS =
-ifeq ($(shell uname -s),"Darwin")
+ifeq ($(shell uname -s),Darwin)
 	CFLAGS += -isysroot $(HOST_SDKROOT) -mmacosx-version-min=$(HOST_OS_VERSION)
 	LDFLAGS += -isysroot $(HOST_SDKROOT) -mmacosx-version-min=$(HOST_OS_VERSION)
 endif

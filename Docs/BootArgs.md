@@ -1,7 +1,8 @@
 # Kernel command line arguments reference
 
 These arguments can be specified in `com.ravynos.boot.plist` and on the booter
-(`efiloader`) command line.
+(`efiloader`) command line. The AArch64 booter (`Kernel/booter`, see its README)
+reads the same plist from `\ravynos\com.ravynos.boot.plist` on the boot volume.
 
 | Flag             | Description                                                |
 |------------------|------------------------------------------------------------|

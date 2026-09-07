@@ -1,0 +1,6 @@
+#!/bin/sh
+# ravynOS host-tool wrapper: the build exports DEVELOPER_DIR for its own
+# xcbuild-based xcrun, which breaks the Xcode shims in /usr/bin. Run the
+# system tool with a clean Xcode environment instead.
+unset DEVELOPER_DIR SDKROOT
+exec /usr/bin/cc "$@"

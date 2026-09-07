@@ -20,6 +20,8 @@ DATAFILES = \
 	twister.h \
 	hurricane.h \
 	BCM2837.h \
+	BCM2712.h \
+	GICv2.h \
 	spr_locks.h
 
 

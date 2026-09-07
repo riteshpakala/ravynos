@@ -1574,4 +1574,25 @@ struct note_command {
     uint64_t	size;		/* length of data region */
 };
 
+
+/* Known values for the platform field of LC_BUILD_VERSION */
+#ifndef PLATFORM_UNKNOWN
+#define PLATFORM_UNKNOWN 0
+#define PLATFORM_ANY 0xFFFFFFFF
+#define PLATFORM_MACOS 1
+#define PLATFORM_IOS 2
+#define PLATFORM_TVOS 3
+#define PLATFORM_WATCHOS 4
+#define PLATFORM_BRIDGEOS 5
+#define PLATFORM_MACCATALYST 6
+#define PLATFORM_IOSMAC 6
+#define PLATFORM_IOSSIMULATOR 7
+#define PLATFORM_TVOSSIMULATOR 8
+#define PLATFORM_WATCHOSSIMULATOR 9
+#define PLATFORM_DRIVERKIT 10
+#define PLATFORM_VISIONOS 11
+#define PLATFORM_VISIONOSSIMULATOR 12
+#define PLATFORM_FIRMWARE 13
+#define PLATFORM_SEPOS 14
+#endif
 #endif /* _MACHO_LOADER_H_ */

@@ -216,6 +216,15 @@
 #define __ARM_COHERENT_CACHE__    1
 #define __ARM_DEBUG__             7
 #define __ARM64_PMAP_SUBPAGE_L1__ 1
+#elif defined (BCM2712)
+/* Raspberry Pi 5: Cortex-A76 (ARMv8.2-A), 4 KiB pages, 40-bit PA space */
+#define __ARM_ARCH__              8
+#define __ARM_VMSA__              8
+#define __ARM_SMP__               1
+#define __ARM_VFP__               4
+#define __ARM_COHERENT_CACHE__    1
+#define __ARM_DEBUG__             7
+#define __ARM64_PMAP_SUBPAGE_L1__ 1
 #else
 #error processor not supported
 #endif
@@ -368,7 +377,7 @@
 
 #define DFSR_WRITE     0x00000800 /* write data abort fault */
 
-#if defined (ARMA7) || defined (APPLE_ARM64_ARCH_FAMILY) || defined (BCM2837)
+#if defined (ARMA7) || defined (APPLE_ARM64_ARCH_FAMILY) || defined (BCM2837) || defined (BCM2712)
 
 #define TEST_FSR_VMFAULT(status) \
 	(((status) == FSR_PFAULT)     \
@@ -615,6 +624,36 @@
 
 #define L2_SWAY         (L2_CSIZE - L2_NWAY)     /* set size 1<<L2_SWAY */
 #define L2_NSET         (L2_SWAY - L2_CLINE)     /* lines per way 1<<L2_NSET */
+
+#elif defined (BCM2712) /* Raspberry Pi 5: Cortex-A76 */
+
+/* I-Cache: 64 KiB, 4-way, 64-byte lines. */
+#define MMU_I_CLINE 6
+
+/* D-Cache: 64 KiB, 4-way, 64-byte lines. */
+#define MMU_CSIZE   16
+#define MMU_CLINE   6
+#define MMU_NWAY    2
+
+#define MMU_I7SET   6
+#define MMU_I7WAY   30
+#define MMU_I9WAY   30
+
+#define MMU_SWAY    (MMU_CSIZE - MMU_NWAY)
+#define MMU_NSET    (MMU_SWAY - MMU_CLINE)
+
+/* L2: 512 KiB per core, 8-way, 64-byte lines (the 2 MiB L3 is DSU-managed). */
+#define __ARM_L2CACHE__ 1
+
+#define L2_CSIZE        __ARM_L2CACHE_SIZE_LOG__
+#define L2_CLINE        6
+#define L2_NWAY         3
+#define L2_I7SET        6
+#define L2_I7WAY        28
+#define L2_I9WAY        28
+
+#define L2_SWAY         (L2_CSIZE - L2_NWAY)
+#define L2_NSET         (L2_SWAY - L2_CLINE)
 
 #elif defined (BCM2837) /* Raspberry Pi 3 */
 

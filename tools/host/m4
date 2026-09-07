@@ -1,0 +1,4 @@
+#!/bin/sh
+# ravynOS host-tool wrapper: run the system m4 without the build's DEVELOPER_DIR.
+unset DEVELOPER_DIR SDKROOT
+exec /usr/bin/m4 "$@"

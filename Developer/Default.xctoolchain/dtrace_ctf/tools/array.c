@@ -24,7 +24,7 @@
 #include <stddef.h>
 int fls(int mask);
 typedef int cmp_t(const void *, const void *, void *, void *thunk);
-void qsort_r(void *a, size_t n, size_t es, cmp_t *cmp, void *thunk);
+void ctf_qsort_r(void *a, size_t n, size_t es, cmp_t *cmp, void *thunk);
 #define __predict_false(exp) __builtin_expect((exp), 0)
 #endif
 
@@ -197,6 +197,6 @@ array_sort(array_t *a, int (*cmp)(void *, void *))
 	int count = array_count(a);
 	if (count && !a->a_sorted) {
 		a->a_sorted = true;
-		qsort_r(a->a_array, count, sizeof(void *), cmp, array_cmp);
+		ctf_qsort_r(a->a_array, count, sizeof(void *), cmp, array_cmp);
 	}
 }

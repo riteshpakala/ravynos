@@ -309,6 +309,9 @@ void ml_install_interrupt_handler(
 	IOInterruptHandler handler,
 	void *refCon);
 
+/* GIC-based boards: timer interrupt delivered as an IRQ (see pe_gicv2.c) */
+void ml_arm_generic_timer_irq(void);
+
 vm_offset_t
     ml_static_vtop(
 	vm_offset_t);

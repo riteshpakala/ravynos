@@ -2105,6 +2105,8 @@ task_deliver_crash_notification(
 			ipc_thread_reset(th_iter);
 		}
 
+#if defined(__x86_64__)
+		/* ravynOS: dump the faulting thread's user registers (x86 only) */
                 x86_saved_state64_t *ss = USER_REGS64(th_iter);
 
                 if (ss == NULL || task->mach_header_vm_address == 0)
@@ -2132,6 +2134,7 @@ task_deliver_crash_notification(
                         printf("%016llx\n", *(frame + 1)); // ret addr
                         frame = (uint64_t *)(*frame);
                 }
+#endif /* __x86_64__ */
         }
         task_unlock(task);
 

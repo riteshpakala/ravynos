@@ -1,0 +1,6 @@
+#!/bin/sh
+# ravynOS host-tool wrapper: Homebrew flex with a clean Xcode environment and
+# our m4 (the /usr/bin/m4 shim would consult the build's DEVELOPER_DIR).
+unset DEVELOPER_DIR SDKROOT
+M4=$(dirname "$0")/m4; export M4
+exec /opt/homebrew/opt/flex/bin/flex "$@"
