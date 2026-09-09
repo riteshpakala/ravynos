@@ -46,6 +46,9 @@ void *efi_alloc_pages(size_t bytes, EFI_MEMORY_TYPE type);
 void *efi_find_config_table(const EFI_GUID *guid);
 bool  efi_guid_equal(const EFI_GUID *a, const EFI_GUID *b);
 int   efi_read_file(const char *path, void **data, size_t *size);
+int   efi_read_file_quiet(const char *path, void **data, size_t *size);
+/* Calls cb for every entry of a directory (not "." / ".."); cb returns nonzero to stop. */
+int   efi_read_dir(const char *path, int (*cb)(const char *name, bool is_dir, void *ctx), void *ctx);
 
 /* ---- boot plist (plist.c) ---- */
 struct boot_config {
@@ -53,6 +56,8 @@ struct boot_config {
 	char kernel_flags[600];
 };
 void plist_parse_boot_config(const char *xml, size_t len, struct boot_config *out);
+/* First top-level <key>key</key><string>...</string>; 1 when found. */
+int  plist_get_string(const char *xml, size_t len, const char *key, char *out, size_t cap);
 
 /* ---- flattened device tree (fdt.c) ---- */
 struct fdt;

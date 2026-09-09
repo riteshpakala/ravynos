@@ -11,8 +11,8 @@
 #include <pexpert/arm/board_config.h>
 #elif defined(__arm64__)
 #include <pexpert/arm64/board_config.h>
-#if defined(GICV2)
-#include <pexpert/arm64/GICv2.h>
+#if defined(PE_GIC)
+#include <pexpert/arm64/GIC.h>
 #endif
 #endif
 
@@ -797,18 +797,34 @@ pe_arm_init_timer(void *args)
 #if defined(ARM_BOARD_CLASS_BCM2712)
 	if (!strcmp(gPESoCDeviceType, "bcm2712-io") ||
 	    !strcmp(gPESoCDeviceType, "qemu-virt-io")) {
-#if defined(GICV2)
+#if defined(PE_GIC)
 		if (args != NULL) {
-			/* Boot CPU: bring up the GIC and take IRQs from here on. */
-			if (!pe_gicv2_init(soc_phys)) {
+			/*
+			 * Physical or virtual generic timer? Boot-arg vtimer=0|1 decides;
+			 * otherwise an Apple implementer in MIDR on this non-Apple board
+			 * means a hypervisor with -cpu host (QEMU hvf), which only
+			 * delivers the virtual timer's interrupt.
+			 */
+			uint32_t vtimer = 0;
+			if (!PE_parse_boot_argn("vtimer", &vtimer, sizeof(vtimer))) {
+				uint64_t midr;
+				__asm__ volatile ("mrs %0, MIDR_EL1" : "=r"(midr));
+				vtimer = (((midr >> 24) & 0xff) == 0x61) ? 1 : 0;
+			}
+			ml_timer_select_virtual(vtimer != 0);
+			kprintf("pe_arm_init_timer: decrementer on the %s generic timer (PPI %u)\n",
+			    vtimer ? "virtual" : "physical", vtimer ? 27 : 30);
+
+			/* Boot CPU: bring up the GIC (v2 or v3) and take IRQs from here on. */
+			if (!pe_gic_init(soc_phys)) {
 				return 0;
 			}
-			ml_install_interrupt_handler(NULL, 0, NULL, pe_gicv2_irq_handler, NULL);
+			ml_install_interrupt_handler(NULL, 0, NULL, pe_gic_irq_handler, NULL);
 		} else {
-			/* Secondary CPU: only the banked CPU interface needs setting up. */
-			pe_gicv2_cpu_init();
+			/* Secondary CPU: only the per-CPU interface needs setting up. */
+			pe_gic_cpu_init();
 		}
-#endif /* GICV2 */
+#endif /* PE_GIC */
 		tbd_funcs = &bcm2712_funcs;
 	} else
 #endif

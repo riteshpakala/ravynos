@@ -727,18 +727,33 @@ init_from_final_linked_image(KXLDObject *object, u_int *filetype_out,
 			kxld_srcversion_init_from_macho(&object->srcversion, source_version_hdr);
 			break;
 		case LC_DYSYMTAB:
+		{
+			u_char *reloc_base = my_file;
+
 			object->dysymtab_hdr = (struct dysymtab_command *) cmd_hdr;
+#if KERNEL
+			/* The running kernel is not a file image: its __LINKEDIT sits at
+			 * its own vmaddr, so disk offsets must be rebased on that segment
+			 * (the symbol table code below does the same). */
+			if (kxld_object_is_kernel(object)) {
+				KXLDSeg *linkedit = kxld_object_get_seg_by_name(object, SEG_LINKEDIT);
+				if (linkedit) {
+					reloc_base = (u_char *)(uintptr_t)linkedit->base_addr - linkedit->fileoff;
+				}
+			}
+#endif
 			rval = kxld_reloc_create_macho(&object->extrelocs, &object->relocator,
-			    (struct relocation_info *) ((void *) (my_file + object->dysymtab_hdr->extreloff)),
+			    (struct relocation_info *) ((void *) (reloc_base + object->dysymtab_hdr->extreloff)),
 			    object->dysymtab_hdr->nextrel);
 			require_noerr(rval, finish);
 
 			rval = kxld_reloc_create_macho(&object->locrelocs, &object->relocator,
-			    (struct relocation_info *) ((void *) (my_file + object->dysymtab_hdr->locreloff)),
+			    (struct relocation_info *) ((void *) (reloc_base + object->dysymtab_hdr->locreloff)),
 			    object->dysymtab_hdr->nlocrel);
 			require_noerr(rval, finish);
 
 			break;
+		}
 		case LC_UNIXTHREAD:
 		case LC_MAIN:
 			/* Don't need to do anything with UNIXTHREAD or MAIN for the kernel */

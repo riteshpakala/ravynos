@@ -18,7 +18,14 @@ CFLAGS += -DKERNEL --sysroot=${SDKROOT} -I${SDKROOT}/usr/include \
 	-I${SDKROOT}/usr/local/include -I${SDKROOT}/usr/local/include/kernel
 CXXFLAGS += -fapple-kext ${CFLAGS}
 LDFLAGS += -nostdlib -Wl,-bundle -Wl,-undefined,dynamic_lookup \
-	-Wl,-kext -Wl,-segalign,0x1000
+	-Wl,-kext -Wl,-segalign,${KEXT_SEGALIGN}
+# the arm64 bring-up kernel uses 16 KiB pages; kexts linked at boot must keep
+# every segment page aligned so their protections can be set per segment
+.if ${MachOArch} == "x86_64"
+KEXT_SEGALIGN = 0x1000
+.else
+KEXT_SEGALIGN = 0x4000
+.endif
 
 .if defined(RPATHS)
 .for rpath in ${RPATHS}
@@ -32,9 +39,27 @@ LDFLAGS += -Wl,-install_name,${INSTALL_NAME_DIR}/${KEXT}
 LDFLAGS += -Wl,-install_name,${INSTALL_NAME}
 .endif
 
+.if ${MachOArch} != "x86_64"
+# Cross-compiled kext (arm64 bring-up): explicit target, per-arch libkmod.
+CFLAGS += -target ${TARGET_TRIPLE}
+LDFLAGS += -target ${TARGET_TRIPLE}
+# osfmk/arm/machine_routines.h needs IOInterruptHandler, which the kernel's
+# pexpert.h pulls in; the userland copy under System.framework/PrivateHeaders
+# (which some kexts put on their include path) does not. Search ours first.
+CFLAGS := -I${ROOT_SOURCE_DIR}/Kernel/xnu/pexpert -I${ROOT_SOURCE_DIR}/Kernel/xnu/iokit ${CFLAGS}
+# kernel-private headers (proc_reg.h) select the board through this define
+CFLAGS += -DARM64_BOARD_CONFIG_${MACHINE_CONFIGS}
+# the bring-up kernel is CONFIG_EMBEDDED: no reserved vtable slots in libkern
+# classes, so kext class layouts must be built the same way
+CFLAGS += -DAPPLE_KEXT_VTABLE_PADDING=0
+_KMOD_LIBDIR = ${SDKROOT}/usr/local/lib/kernel/${MachOArch}
+.else
+_KMOD_LIBDIR = ${SDKROOT}/usr/local/lib/kernel
+.endif
+
 .if defined(KERNEL_PRIVATE)
 CFLAGS += -DKERNEL_PRIVATE
-LDFLAGS += -L${SDKROOT}/usr/local/lib/kernel -lkmod
+LDFLAGS += -L${_KMOD_LIBDIR} -lkmod
 .endif
 
 .if defined(MACOS_VERSION_MIN)
@@ -69,7 +94,7 @@ ${_KEXT_LIB}: ${_KEXT_FOLDER} ${_KEXT_FOLDER}/Contents/Info.plist ${OBJS} \
 	${CXX} -o ${.TARGET} ${OBJS} ${LDFLAGS}
 
 .if defined(KERNEL_PRIVATE)
-${_KEXT_LIB}: ${SDKROOT}/usr/local/lib/kernel/libkmod.a
+${_KEXT_LIB}: ${_KMOD_LIBDIR}/libkmod.a
 .endif
 
 kmod_info.c: ${.OBJDIR}/kmod_info.c

@@ -365,6 +365,17 @@ _os_log_to_log_internal(os_log_t oslog, os_log_type_t type,
 
 #if FIREHOSE_USES_SHARED_CACHE
 	dso = (void *) segLOWESTTEXT;
+#if defined(__arm64__) && CONFIG_KEXT_BASEMENT
+	/*
+	 * Kexts linked at boot live in the basement below the kernel text, so
+	 * their format strings sit below segLOWESTTEXT. Anchor those tracepoints
+	 * at the basement instead; offsets stay small and non-negative.
+	 */
+	if ((uintptr_t)format < (uintptr_t)dso) {
+		extern mach_vm_offset_t kext_alloc_base;
+		dso = (void *)kext_alloc_base;
+	}
+#endif
 #else /* FIREHOSE_USES_SHARED_CACHE */
 	if (dso == NULL) {
 		dso = (void *) OSKextKextForAddress(format);

@@ -206,4 +206,13 @@ kernel: .PHONY
 booter: .PHONY
 	${MAKE} -C ${.CURDIR}/Kernel/booter all
 
+# arm64 kexts (needs the kernel headers the kernel build installed)
+kexts: .PHONY
+	${MAKE} -C ${.CURDIR}/Kernel/xnu/libkern/kmod all
+	${MAKE} -C ${.CURDIR}/Kernel/Extensions all
+
+# freestanding process 1 for the arm64 bring-up (no libSystem needed)
+ravyninit: .PHONY
+	${MAKE} -C ${.CURDIR}/Kernel/ravyninit all
+
 .include "./BSD/share/mk/bsd.subdir.mk"

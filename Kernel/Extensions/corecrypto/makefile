@@ -52,7 +52,9 @@ copyheaders:
 	mkdir -p ${.OBJDIR}/include/corecrypto
 	cp -f ${.CURDIR}/cc_abort.h ${.OBJDIR}/include/corecrypto
 
+.if ${MachOArch} == "x86_64"
 SUBDIR = user
+.endif
 
 .include <rvn.kext.mk>
 .include <bsd.subdir.mk>

@@ -120,7 +120,9 @@ static void OSKextLogKextInfo(OSKext *aKext, uint64_t address, uint64_t size, fi
  * not work on ARM.  To get around that, we must free prelinked kext
  * executables with ml_static_mfree() instead of kext_free().
  */
-#if __i386__ || __x86_64__
+#if __i386__ || __x86_64__ || CONFIG_KEXT_BASEMENT
+/* A kext basement (x86_64, and the arm64 bring-up boards) means kexts are
+ * linked at boot into VM-mapped memory within branch range of the kernel. */
 #define VM_MAPPED_KEXTS 1
 #define KASLR_KEXT_DEBUG 0
 #define KASLR_IOREG_DEBUG 0
@@ -978,9 +980,15 @@ OSKext::removeKextBootstrap(void)
 	 */
 #if CONFIG_KXLD
 #if (__arm__ || __arm64__)
-#error CONFIG_KXLD not expected for this arch
-#endif
+	/*
+	 * In-kernel linking on arm64 (BCM2712 bring-up): the kernel's __LINKEDIT
+	 * lives in the static region and simply stays resident. The re-mapping
+	 * below is x86_64-only.
+	 */
+	if (0) {
+#else
 	if (!sKeepSymbols) {
+#endif
 		kern_return_t mem_result;
 		void *seg_copy = NULL;
 		void *seg_data = NULL;
@@ -1050,6 +1058,8 @@ OSKext::removeKextBootstrap(void)
 #if !(__arm__ || __arm64__)
 #error CONFIG_KXLD is expected for this arch
 #endif
+#endif /* CONFIG_KXLD */
+#if !CONFIG_KXLD
 
 	/*****
 	 * Dump the LINKEDIT segment, unless keepsyms is set.
@@ -5491,7 +5501,8 @@ OSKext::loadExecutable()
 	}
 
 	/* <rdar://problem/21444003> all callers must be entitled */
-	if (FALSE == IOTaskHasEntitlement(current_task(), kOSKextManagementEntitlement)) {
+	if (current_task() != kernel_task &&
+	    FALSE == IOTaskHasEntitlement(current_task(), kOSKextManagementEntitlement)) {
 		OSKextLog(this,
 		    kOSKextLogErrorLevel | kOSKextLogLoadFlag,
 		    "Not entitled to link kext '%s'",
@@ -5813,6 +5824,15 @@ OSKext::jettisonLinkeditSegment(void)
 	vm_offset_t                start;
 	vm_size_t                  linkeditsize, kextsize;
 	OSData                   * data = NULL;
+
+#if defined(__arm64__) && CONFIG_KEXT_BASEMENT
+	/*
+	 * Boot-linked kexts live in the wired basement sub-map; giving back the
+	 * tail of such a mapping is not worth the trouble for a few hundred KB,
+	 * and keeping __LINKEDIT makes every kext a usable link dependency.
+	 */
+	return;
+#endif
 
 #if NO_KEXTD
 	/* We can free symbol tables for all embedded kexts because we don't
@@ -6319,6 +6339,10 @@ OSKext::validateKextMapping(bool startFlag)
 		}
 
 #if VM_MAPPED_KEXTS
+#if defined(BCM2712)
+		kprintf("OSKext: %s linked at 0x%llx (%s function 0x%llx, prot %x)\n",
+		    getIdentifierCString(), (uint64_t)kmod_info->address, whichOp, (uint64_t)address, info.protection);
+#endif
 		if (!(info.protection & VM_PROT_EXECUTE)) {
 			OSKextLog(this,
 			    kOSKextLogErrorLevel |

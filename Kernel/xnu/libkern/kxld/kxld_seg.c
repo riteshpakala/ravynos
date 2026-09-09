@@ -850,7 +850,10 @@ void
 kxld_seg_set_vm_protections(KXLDSeg *seg, boolean_t strict_protections)
 {
 	if (strict_protections) {
-		if (!strncmp(seg->segname, SEG_TEXT, sizeof(seg->segname))) {
+		/* arm64 kexts keep their code in __TEXT_EXEC and only headers and
+		 * constants in __TEXT; both must stay executable-capable. */
+		if (!strncmp(seg->segname, SEG_TEXT, sizeof(seg->segname)) ||
+		    !strncmp(seg->segname, "__TEXT_EXEC", sizeof(seg->segname))) {
 			seg->initprot = TEXT_SEG_PROT;
 			seg->maxprot = TEXT_SEG_PROT;
 		} else {

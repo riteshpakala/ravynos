@@ -168,12 +168,16 @@ class OSInterface
 #else /* XNU_KERNEL_PRIVATE */
 #include <TargetConditionals.h>
 
+/* Kexts built for a CONFIG_EMBEDDED kernel (the ravynOS arm64 bring-up
+ * boards) pass -DAPPLE_KEXT_VTABLE_PADDING=0 so their class layouts match. */
+#ifndef APPLE_KEXT_VTABLE_PADDING
 #if (TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR)
 #define APPLE_KEXT_VTABLE_PADDING   0
 #else /* (TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR) */
 /*! @parseOnly */
 #define APPLE_KEXT_VTABLE_PADDING   1
 #endif /* (TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR) */
+#endif /* APPLE_KEXT_VTABLE_PADDING */
 
 #endif /* XNU_KERNEL_PRIVATE */
 

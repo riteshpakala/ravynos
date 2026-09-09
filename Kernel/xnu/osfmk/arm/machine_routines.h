@@ -309,8 +309,11 @@ void ml_install_interrupt_handler(
 	IOInterruptHandler handler,
 	void *refCon);
 
-/* GIC-based boards: timer interrupt delivered as an IRQ (see pe_gicv2.c) */
+/* GIC-based boards: timer interrupt delivered as an IRQ (see pe_gic.c) */
 void ml_arm_generic_timer_irq(void);
+/* Drive the decrementer from the virtual (CNTV) instead of the physical (CNTP) timer */
+void ml_timer_select_virtual(bool enable);
+bool ml_timer_is_virtual(void);
 
 vm_offset_t
     ml_static_vtop(

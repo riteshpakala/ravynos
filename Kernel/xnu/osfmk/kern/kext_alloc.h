@@ -35,6 +35,11 @@ __BEGIN_DECLS
 
 void kext_alloc_init(void);
 
+#if defined(__arm64__) && CONFIG_KEXT_BASEMENT
+/* Virtual range of the boot-time kext basement: below the static kernel reservation. */
+void kext_basement_bounds(vm_offset_t *base, vm_offset_t *top);
+#endif
+
 kern_return_t kext_alloc(vm_offset_t *addr, vm_size_t size, boolean_t fixed);
 
 void kext_free(vm_offset_t addr, vm_size_t size);

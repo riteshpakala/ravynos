@@ -21,7 +21,9 @@ DATAFILES = \
 	hurricane.h \
 	BCM2837.h \
 	BCM2712.h \
+	GIC.h \
 	GICv2.h \
+	GICv3.h \
 	spr_locks.h
 
 

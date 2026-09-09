@@ -44,15 +44,51 @@
 
 
 vm_map_t g_kext_map = 0;
-#if KASLR_IOREG_DEBUG
+#if KASLR_IOREG_DEBUG || (defined(__arm64__) && CONFIG_KEXT_BASEMENT)
+/* arm64: sleh.c needs the bounds to tell basement faults from static-region faults */
 mach_vm_offset_t kext_alloc_base = 0;
 mach_vm_offset_t kext_alloc_max = 0;
 #else
 static mach_vm_offset_t kext_alloc_base = 0;
 static mach_vm_offset_t kext_alloc_max = 0;
+#endif
 #if CONFIG_KEXT_BASEMENT
 static mach_vm_offset_t kext_post_boot_base = 0;
 #endif
+
+#if defined(__arm64__) && CONFIG_KEXT_BASEMENT
+/*
+ * arm64 bring-up boards (BCM2712) link kexts at boot with the in-kernel
+ * linker. The basement sits directly below the kernel's __TEXT, in the
+ * virtual-address hole the booter leaves between virtBase and the kernel
+ * image; pmap_virtual_region() leaves exactly that hole unreserved.
+ */
+#define KEXT_ALLOC_MAX_OFFSET   KEXT_BASEMENT_SIZE
+#endif
+
+#if defined(__arm64__) && CONFIG_KEXT_BASEMENT
+/*
+ * The basement ends where the kernel's static reservation begins (gVirtBase
+ * rounded down to the bootstrap block size, see pmap_virtual_region()) and
+ * extends KEXT_BASEMENT_SIZE below that. kmem_init() reserves it without the
+ * permanent flag and kext_alloc_init() replaces that reservation with the
+ * kext sub-map, which is how the x86_64 basement works too.
+ */
+void
+kext_basement_bounds(vm_offset_t *base, vm_offset_t *top)
+{
+	extern vm_offset_t gVirtBase;
+	kernel_segment_command_t *text = getsegbyname(SEG_TEXT);
+	vm_offset_t text_start = vm_map_trunc_page(text->vmaddr, VM_MAP_PAGE_MASK(kernel_map));
+	vm_offset_t static_start = gVirtBase &
+	    (TEST_PAGE_SIZE_4K ? 0xFFFFFFFFFF800000ULL : 0xFFFFFFFFFE000000ULL);
+
+	if (static_start > text_start) {
+		static_start = text_start;
+	}
+	*top = static_start;
+	*base = static_start - KEXT_BASEMENT_SIZE;
+}
 #endif
 
 /*
@@ -78,6 +114,23 @@ kext_alloc_init(void)
 	text = getsegbyname(SEG_TEXT);
 	text_start = vm_map_trunc_page(text->vmaddr,
 	    VM_MAP_PAGE_MASK(kernel_map));
+#if defined(__arm64__)
+	{
+		vm_offset_t basement_base, basement_top;
+
+		kext_basement_bounds(&basement_base, &basement_top);
+		text_end = vm_map_round_page(text->vmaddr + text->vmsize,
+		    VM_MAP_PAGE_MASK(kernel_map));
+		text_size = text_end - text_start;
+
+		kext_alloc_base = basement_base;
+		kext_alloc_size = basement_top - basement_base;
+		kext_alloc_max = basement_top;
+	}
+	if (kext_alloc_base < VM_MIN_KERNEL_AND_KEXT_ADDRESS) {
+		panic("kext_alloc_init: basement 0x%llx below the kernel map", kext_alloc_base);
+	}
+#else
 	text_start &= ~((512ULL * 1024 * 1024 * 1024) - 1);
 	text_end = vm_map_round_page(text->vmaddr + text->vmsize,
 	    VM_MAP_PAGE_MASK(kernel_map));
@@ -86,6 +139,7 @@ kext_alloc_init(void)
 	kext_alloc_base = KEXT_ALLOC_BASE(text_end);
 	kext_alloc_size = KEXT_ALLOC_SIZE(text_size);
 	kext_alloc_max = kext_alloc_base + kext_alloc_size;
+#endif
 
 	/* Post boot kext allocation will start after the prelinked kexts */
 	prelinkTextSegment = getsegbyname("__PRELINK_TEXT");
@@ -181,6 +235,21 @@ kext_alloc(vm_offset_t *_addr, vm_size_t size, boolean_t fixed)
 		rval = KERN_INVALID_ADDRESS;
 		goto finish;
 	}
+
+#if defined(__arm64__)
+	/*
+	 * The basement sits inside what the exception handler treats as the
+	 * static region, so lazy zero-fill faults there would panic. Populate
+	 * and wire the pages now; the linker writes every one of them anyway.
+	 */
+	rval = vm_map_wire_kernel(g_kext_map, addr, addr + size,
+	    VM_PROT_READ | VM_PROT_WRITE, VM_KERN_MEMORY_KEXT, FALSE);
+	if (rval != KERN_SUCCESS) {
+		printf("kext_alloc: wiring 0x%llx+0x%llx failed - %d\n", addr, (uint64_t)size, rval);
+		kext_free((vm_offset_t)addr, size);
+		goto finish;
+	}
+#endif
 
 	*_addr = (vm_offset_t)addr;
 	rval = KERN_SUCCESS;

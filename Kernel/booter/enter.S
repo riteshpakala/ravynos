@@ -108,6 +108,15 @@ from_el2:
 	msr	CNTHCTL_EL2, x0
 	msr	CNTVOFF_EL2, xzr
 
+	/* GICv3 system-register interface (ID_AA64PFR0_EL1.GIC != 0): let EL1 use ICC_* */
+	mrs	x0, ID_AA64PFR0_EL1
+	ubfx	x0, x0, #24, #4
+	cbz	x0, 1f
+	mov	x0, #0x9		// ICC_SRE_EL2.SRE | Enable
+	msr	S3_4_C12_C9_5, x0	// ICC_SRE_EL2
+	isb
+1:
+
 	/* No FP/SIMD trapping to EL2, no system register trapping. */
 	mov	x0, #0x33ff
 	msr	CPTR_EL2, x0

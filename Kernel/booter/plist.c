@@ -52,11 +52,12 @@ decode_entities(char *s)
 	*w = 0;
 }
 
-void
-plist_parse_boot_config(const char *xml, size_t len, struct boot_config *out)
+int
+plist_get_string(const char *xml, size_t len, const char *key, char *out, size_t cap)
 {
 	const char *p = xml;
 	const char *end = xml + len;
+	size_t keylen = strlen(key);
 
 	while ((p = find(p, end, "<key>")) != NULL) {
 		p += 5;
@@ -64,13 +65,7 @@ plist_parse_boot_config(const char *xml, size_t len, struct boot_config *out)
 		if (!kend) {
 			break;
 		}
-		char key[64];
-		size_t klen = (size_t)(kend - p);
-		if (klen >= sizeof(key)) {
-			klen = sizeof(key) - 1;
-		}
-		memcpy(key, p, klen);
-		key[klen] = 0;
+		bool match = (size_t)(kend - p) == keylen && memcmp(p, key, keylen) == 0;
 		p = skip_ws(kend + 6, end);
 
 		if (p + 8 <= end && memcmp(p, "<string>", 8) == 0) {
@@ -79,27 +74,34 @@ plist_parse_boot_config(const char *xml, size_t len, struct boot_config *out)
 			if (!vend) {
 				break;
 			}
-			char *dst = NULL;
-			size_t cap = 0;
-			if (strcmp(key, "Kernel") == 0) {
-				dst = out->kernel;
-				cap = sizeof(out->kernel);
-			} else if (strcmp(key, "Kernel Flags") == 0) {
-				dst = out->kernel_flags;
-				cap = sizeof(out->kernel_flags);
-			}
-			if (dst) {
+			if (match) {
 				size_t vlen = (size_t)(vend - p);
 				if (vlen >= cap) {
 					vlen = cap - 1;
 				}
-				memcpy(dst, p, vlen);
-				dst[vlen] = 0;
-				decode_entities(dst);
+				memcpy(out, p, vlen);
+				out[vlen] = 0;
+				decode_entities(out);
+				return 1;
 			}
 			p = vend + 9;
-		} else if (p + 9 <= end && memcmp(p, "<string/>", 9) == 0) {
-			p += 9;
+		} else if (match) {
+			/* present but not a string (or empty) */
+			return 0;
 		}
+	}
+	return 0;
+}
+
+void
+plist_parse_boot_config(const char *xml, size_t len, struct boot_config *out)
+{
+	char value[sizeof(out->kernel_flags)];
+
+	if (plist_get_string(xml, len, "Kernel", value, sizeof(out->kernel))) {
+		strlcpy(out->kernel, value, sizeof(out->kernel));
+	}
+	if (plist_get_string(xml, len, "Kernel Flags", value, sizeof(out->kernel_flags))) {
+		strlcpy(out->kernel_flags, value, sizeof(out->kernel_flags));
 	}
 }

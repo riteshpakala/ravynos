@@ -74,6 +74,9 @@ typedef struct vc_progress_user_options vc_progress_user_options;
 #if XNU_KERNEL_PRIVATE
 
 void vcputc(int, int, int);
+#if defined(BCM2712)
+void vc_debugger_break_lock(void);
+#endif
 
 int vcgetc(     int             l,
     int             u,

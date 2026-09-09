@@ -134,6 +134,15 @@ SECURITY_READ_ONLY_EARLY(uint32_t) nconsops = (sizeof cons_ops / sizeof cons_ops
 
 uint32_t cons_ops_index = VC_CONS_OPS;
 
+#if defined(BCM2712)
+/*
+ * Bring-up boards: when the serial port owns the console (serial=3), also
+ * paint console output on the framebuffer so a VM window or an HDMI screen
+ * shows the boot text and any panic. Boot-arg vcmirror=0 turns it off.
+ */
+static uint32_t console_mirror_video = 1;
+#endif
+
 #if defined(__x86_64__) || defined(__arm__)
 // NMI static variables
 #define NMI_STRING_SIZE 32
@@ -173,6 +182,9 @@ console_ring_lock_init(void)
 void
 console_init(void)
 {
+#if defined(BCM2712)
+	PE_parse_boot_argn("vcmirror", &console_mirror_video, sizeof(console_mirror_video));
+#endif
 	int ret, i;
 	uint32_t * p;
 
@@ -309,11 +321,29 @@ _cnputs(char * c, int size)
 		}
 	}
 
+#if defined(BCM2712)
+	if (console_mirror_video && cons_ops_index == SERIAL_CONS_OPS &&
+	    kernel_debugger_entry_count) {
+		/* The panic may have hit inside vcputc(); do not spin on its lock. */
+		vc_debugger_break_lock();
+	}
+#endif
+
 	while (size-- > 0) {
 		if (*c == '\n') {
 			cons_ops[cons_ops_index].putc(0, 0, '\r');
+#if defined(BCM2712)
+			if (console_mirror_video && cons_ops_index == SERIAL_CONS_OPS) {
+				vcputc(0, 0, '\r');
+			}
+#endif
 		}
 		cons_ops[cons_ops_index].putc(0, 0, *c);
+#if defined(BCM2712)
+		if (console_mirror_video && cons_ops_index == SERIAL_CONS_OPS) {
+			vcputc(0, 0, *c);
+		}
+#endif
 		c++;
 	}
 

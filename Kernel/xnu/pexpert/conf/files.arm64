@@ -5,3 +5,5 @@ pexpert/arm/pe_init.c                  standard
 pexpert/arm/pe_kprintf.c               standard
 pexpert/arm/pe_serial.c                standard
 pexpert/arm/pe_gicv2.c                 standard
+pexpert/arm/pe_gic.c                    standard
+pexpert/arm/pe_gicv3.c                    standard

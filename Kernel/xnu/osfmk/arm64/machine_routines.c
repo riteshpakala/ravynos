@@ -1029,6 +1029,27 @@ ml_install_interrupt_handler(
 
 #if defined(BCM2712)
 /*
+ * Which EL1 generic timer drives the decrementer: the physical one (CNTP,
+ * the default and what real hardware uses) or the virtual one (CNTV).
+ * Apple's hypervisor (QEMU -accel hvf, Virtualization.framework) only
+ * delivers the virtual timer's interrupt; CNTVOFF is zero there, so both
+ * count the same and only the register names differ.
+ */
+static bool ml_virtual_timer_selected = false;
+
+void
+ml_timer_select_virtual(bool enable)
+{
+	ml_virtual_timer_selected = enable;
+}
+
+bool
+ml_timer_is_virtual(void)
+{
+	return ml_virtual_timer_selected;
+}
+
+/*
  * On a GIC the ARM generic timer PPI arrives as an IRQ rather than the FIQ
  * xnu's AIC-shaped timer path expects. The pexpert GICv2 driver calls this
  * from its IRQ handler; it mirrors the timer branch of sleh_fiq().
@@ -1482,6 +1503,12 @@ vm_offset_t
 ml_static_unslide(
 	vm_offset_t vaddr)
 {
+#if CONFIG_KEXT_BASEMENT
+	/* Boot-linked kexts live below virtBase, outside the static range, and are never slid. */
+	if (vaddr < gVirtBase) {
+		return vaddr - vm_kernel_slide;
+	}
+#endif
 	return ml_static_vtop(vaddr) - gPhysBase + gVirtBase - vm_kernel_slide;
 }
 
@@ -1862,6 +1889,12 @@ ml_set_decrementer(uint32_t dec_value)
 	if (cdp->cpu_set_decrementer_func) {
 		((void (*)(uint32_t))cdp->cpu_set_decrementer_func)(dec_value);
 	} else {
+#if defined(BCM2712)
+		if (ml_virtual_timer_selected) {
+			__asm__ volatile ("msr CNTV_TVAL_EL0, %0" : : "r"((uint64_t)dec_value));
+			return;
+		}
+#endif
 		__asm__ volatile ("msr CNTP_TVAL_EL0, %0" : : "r"((uint64_t)dec_value));
 	}
 }
@@ -1899,6 +1932,11 @@ ml_get_decrementer()
 	} else {
 		uint64_t wide_val;
 
+#if defined(BCM2712)
+		if (ml_virtual_timer_selected) {
+			__asm__ volatile ("mrs %0, CNTV_TVAL_EL0" : "=r"(wide_val));
+		} else
+#endif
 		__asm__ volatile ("mrs %0, CNTP_TVAL_EL0" : "=r"(wide_val));
 		dec = (uint32_t)wide_val;
 		assert(wide_val == (uint64_t)dec);
@@ -1912,6 +1950,12 @@ ml_get_timer_pending()
 {
 	uint64_t cntp_ctl;
 
+#if defined(BCM2712)
+	if (ml_virtual_timer_selected) {
+		__asm__ volatile ("mrs %0, CNTV_CTL_EL0" : "=r"(cntp_ctl));
+		return ((cntp_ctl & CNTV_CTL_EL0_ISTATUS) != 0) ? TRUE : FALSE;
+	}
+#endif
 	__asm__ volatile ("mrs %0, CNTP_CTL_EL0" : "=r"(cntp_ctl));
 	return ((cntp_ctl & CNTP_CTL_EL0_ISTATUS) != 0) ? TRUE : FALSE;
 }
@@ -2108,6 +2152,12 @@ _enable_virtual_timer(void)
 {
 	uint64_t cntvctl = CNTP_CTL_EL0_ENABLE; /* One wants to use 32 bits, but "mrs" prefers it this way */
 
+#if defined(BCM2712)
+	if (ml_virtual_timer_selected) {
+		__asm__ volatile ("msr CNTV_CTL_EL0, %0" : : "r"(cntvctl));
+		return;
+	}
+#endif
 	__asm__ volatile ("msr CNTP_CTL_EL0, %0" : : "r"(cntvctl));
 }
 

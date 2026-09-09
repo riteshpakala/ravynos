@@ -515,6 +515,21 @@ gc_hide_cursor(unsigned int xx, unsigned int yy)
 	}
 }
 
+#if defined(BCM2712)
+/*
+ * Panic path helper for the serial console mirror: a fault taken while
+ * vcputc() held its lock (painting a character) would otherwise make every
+ * mirrored panic character spin on that lock forever. Only the panicking
+ * CPU runs at that point, so re-initialising the lock is safe; _cnputs()
+ * does the same for its own lock.
+ */
+void
+vc_debugger_break_lock(void)
+{
+	VCPUTC_LOCK_INIT();
+}
+#endif
+
 static void
 gc_initialize(struct vc_info * info)
 {

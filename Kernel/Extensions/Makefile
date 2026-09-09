@@ -1,3 +1,4 @@
+.if ${MachOArch} == "x86_64"
 SUBDIR = AppleAPIC IOACPIFamily IOPCIFamily IOStorageFamily IOATAFamily \
 	 AppleIntelPIIXATA msdosfs hfs AppleFileSystemDriver RavynAHCIPort \
 	 IOGraphics corecrypto pthread IOHIDFamily ApplePS2Controller \
@@ -11,6 +12,22 @@ all: kernelcache
 	cp -fR ${.OBJDIR}/${kext}/${kext:S/IOGraphics/IOGOPFramebuffer/}.kext ${target_dir}/
 .endfor
 .endfor
+.else
+# arm64 bring-up (Raspberry Pi 5 / QEMU virt): the booter loads these from
+# the boot volume and the kernel links them with kxld. No kernelcache.
+SUBDIR = RavynARMPlatform RavynVirtIOBlock IOStorageFamily corecrypto pthread hfs \
+	 AppleFileSystemDriver
+
+all: ${SUBDIR}
+	mkdir -p ${SYSROOT_DIR}/System/Library/Extensions
+.for kext in ${SUBDIR}
+	rm -rf ${SYSROOT_DIR}/System/Library/Extensions/${kext}.kext
+	cp -fR ${.OBJDIR}/${kext}/${kext}.kext ${SYSROOT_DIR}/System/Library/Extensions/
+.endfor
+	# hfs's encodings plug-in is a kext of its own; the booter loads it beside hfs
+	rm -rf ${SYSROOT_DIR}/System/Library/Extensions/hfs_encodings.kext
+	cp -fR ${.OBJDIR}/hfs/hfs_encodings/hfs_encodings.kext ${SYSROOT_DIR}/System/Library/Extensions/
+.endif
 
 EXTENSIONS = ${ROOT_BINARY_DIR}${ROOT_SOURCE_DIR}/Kernel/Extensions
 XNU_OBJDIR = ${ROOT_BINARY_DIR}${ROOT_SOURCE_DIR}/Kernel/xnu

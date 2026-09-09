@@ -74,6 +74,7 @@
 #include <vm/vm_compressor.h>
 #include <vm/vm_pageout.h>
 #include <kern/misc_protos.h>
+#include <kern/kext_alloc.h>
 #include <vm/cpm.h>
 #include <kern/ledger.h>
 #include <kern/bits.h>
@@ -1460,6 +1461,30 @@ kmem_init(
 
 			region_select++;
 		}
+
+#if defined(__arm64__) && CONFIG_KEXT_BASEMENT
+		/*
+		 * Hold the kext basement for kext_alloc_init(): reserved, but not
+		 * permanent, so the kext sub-map may replace this entry later and
+		 * nothing else can take the range in the meantime.
+		 */
+		{
+			vm_offset_t basement_base, basement_top;
+			vm_map_kernel_flags_t basement_flags = VM_MAP_KERNEL_FLAGS_NONE;
+
+			kext_basement_bounds(&basement_base, &basement_top);
+			basement_flags.vmkf_no_pmap_check = TRUE;
+			map_addr = basement_base;
+			kr = vm_map_enter(kernel_map, &map_addr, basement_top - basement_base,
+			    (vm_map_offset_t) 0, VM_FLAGS_FIXED, basement_flags, VM_KERN_MEMORY_KEXT,
+			    VM_OBJECT_NULL, (vm_object_offset_t) 0, FALSE, VM_PROT_NONE, VM_PROT_NONE,
+			    VM_INHERIT_DEFAULT);
+			if (kr != KERN_SUCCESS) {
+				panic("kmem_init: cannot reserve the kext basement 0x%llx-0x%llx (0x%x)",
+				    (uint64_t)basement_base, (uint64_t)basement_top, kr);
+			}
+		}
+#endif
 	}
 #else
 	kernel_map = vm_map_create(pmap_kernel(), VM_MIN_KERNEL_AND_KEXT_ADDRESS,

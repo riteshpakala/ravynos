@@ -75,8 +75,15 @@ OSKextGetCurrentLoadTag(void)
 	return (OSKextLoadTag)KMOD_INFO_NAME.id;
 }
 
-__private_extern__ void
-__cxa_atexit(void)
+/*
+ * clang registers destructors of kext globals through __cxa_atexit and traps
+ * when the call reports failure. Kexts never run those destructors (unload
+ * tears the whole image down), so accept the registration: return 0. The
+ * previous void stub left the first argument in the return register, which
+ * reads as "failed" on arm64.
+ */
+__private_extern__ int
+__cxa_atexit(void (*func)(void *) __attribute__((unused)), void *arg __attribute__((unused)), void *dso __attribute__((unused)))
 {
-	return;
+	return 0;
 }

@@ -604,25 +604,33 @@ kernel_bootstrap_thread(void)
 	 * must be after IOKit has been started because IOKit performs processor
 	 * discovery.
 	 */
+	kernel_bootstrap_log("cpu_userwindow_init");
 	cpu_userwindow_init(0);
 #endif
 
 	/*
 	 *	Initialize the shared region module.
 	 */
+	kernel_bootstrap_log("vm_shared_region_init");
 	vm_shared_region_init();
+	kernel_bootstrap_log("vm_commpage_init");
 	vm_commpage_init();
+	kernel_bootstrap_log("vm_commpage_text_init");
 	vm_commpage_text_init();
 
 #if CONFIG_MACF
+	kernel_bootstrap_log("mac_policy_initmach");
 	mac_policy_initmach();
 #if CONFIG_VNGUARD
+	kernel_bootstrap_log("vnguard_policy_init");
 	vnguard_policy_init();
 #endif
 #endif
 
 #if CONFIG_DTRACE
+	kernel_bootstrap_log("dtrace_early_init");
 	dtrace_early_init();
+	kernel_bootstrap_log("sdt_early_init");
 	sdt_early_init();
 #endif
 
@@ -633,6 +641,7 @@ kernel_bootstrap_thread(void)
 	 * Must be done prior to lockdown so that we can free (and possibly relocate)
 	 * the static KVA mappings used for the jettisoned bootstrap segments.
 	 */
+	kernel_bootstrap_log("OSKextRemoveKextBootstrap");
 	OSKextRemoveKextBootstrap();
 #if defined(__arm__) || defined(__arm64__)
 #if CONFIG_KERNEL_INTEGRITY
@@ -641,6 +650,7 @@ kernel_bootstrap_thread(void)
 	/*
 	 *  Finalize protections on statically mapped pages now that comm page mapping is established.
 	 */
+	kernel_bootstrap_log("arm_vm_prot_finalize");
 	arm_vm_prot_finalize(PE_state.bootArgs);
 #endif
 
@@ -653,6 +663,7 @@ kernel_bootstrap_thread(void)
 	 * Note: at this stage we can use the cryptographically secure PRNG
 	 * rather than early_random().
 	 */
+	kernel_bootstrap_log("read_random");
 	read_random(&vm_kernel_addrperm, sizeof(vm_kernel_addrperm));
 	vm_kernel_addrperm |= 1;
 	read_random(&buf_kernel_addrperm, sizeof(buf_kernel_addrperm));
@@ -662,6 +673,7 @@ kernel_bootstrap_thread(void)
 	read_random(&vm_kernel_addrhash_salt, sizeof(vm_kernel_addrhash_salt));
 	read_random(&vm_kernel_addrhash_salt_ext, sizeof(vm_kernel_addrhash_salt_ext));
 
+	kernel_bootstrap_log("vm_set_restrictions");
 	vm_set_restrictions();
 
 
@@ -677,6 +689,7 @@ kernel_bootstrap_thread(void)
 	 *	Start the user bootstrap.
 	 */
 #ifdef  MACH_BSD
+	kernel_bootstrap_log("bsd_init");
 	bsd_init();
 #endif
 

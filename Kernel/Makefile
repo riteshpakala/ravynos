@@ -152,9 +152,9 @@ SUBDIR = xnu/libkern/kmod xnu/libkern/kxld
 SUBDIR += IOKitUser
 SUBDIR += Extensions
 .else
-# Kexts, kxld and IOKitUser need an arm64 userland SDK (later milestones).
-# The AArch64 UEFI booter is what the arm64 kernel needs to boot.
-SUBDIR = booter
+# arm64: libkmod for the target, the AArch64 UEFI booter, then the kexts the
+# booter hands to the kernel (linked at boot by kxld; no kernelcache tool).
+SUBDIR = xnu/libkern/kmod .WAIT booter Extensions
 .endif
 
 .include <bsd.subdir.mk>

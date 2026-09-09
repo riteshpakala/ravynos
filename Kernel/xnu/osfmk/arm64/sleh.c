@@ -1297,7 +1297,14 @@ handle_kernel_abort(arm_saved_state_t *state, uint32_t esr, vm_offset_t fault_ad
 		}
 #endif
 
-		if (fault_addr >= gVirtBase && fault_addr < static_memory_end) {
+#if CONFIG_KEXT_BASEMENT
+		/* The kext basement is VM-managed memory that happens to sit inside the static range. */
+		extern mach_vm_offset_t kext_alloc_base, kext_alloc_max;
+		bool in_kext_basement = kext_alloc_max != 0 && fault_addr >= kext_alloc_base && fault_addr < kext_alloc_max;
+#else
+		bool in_kext_basement = false;
+#endif
+		if (fault_addr >= gVirtBase && fault_addr < static_memory_end && !in_kext_basement) {
 			panic_with_thread_kernel_state("Unexpected fault in kernel static region\n", state);
 		}
 

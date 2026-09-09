@@ -185,6 +185,13 @@ extern unsigned         PAGE_SHIFT_CONST;
 #error architecture not supported
 #endif
 
+/*
+ * arm64 bring-up boards (CONFIG_KEXT_BASEMENT) link kexts at boot with kxld.
+ * An arm64 branch reaches +/-128 MiB, so the kext basement is this large and
+ * sits directly below the kernel's lowest text (kext_alloc.c, pmap.c).
+ */
+#define KEXT_BASEMENT_SIZE              (64ULL * 1024 * 1024)
+
 #define VM_MIN_KERNEL_AND_KEXT_ADDRESS  \
 	                        VM_MIN_KERNEL_ADDRESS
 

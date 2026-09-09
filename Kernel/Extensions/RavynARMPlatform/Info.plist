@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleExecutable</key>
+	<string>RavynARMPlatform</string>
+	<key>CFBundleIdentifier</key>
+	<string>@BUNDLE_IDENTIFIER@</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>ravynOS arm64 Platform Expert</string>
+	<key>CFBundlePackageType</key>
+	<string>KEXT</string>
+	<key>CFBundleShortVersionString</key>
+	<string>@BUNDLE_VERSION@</string>
+	<key>CFBundleVersion</key>
+	<string>@BUNDLE_VERSION@</string>
+	<key>IOKitPersonalities</key>
+	<dict>
+		<key>RavynARMPE</key>
+		<dict>
+			<key>CFBundleIdentifier</key>
+			<string>@BUNDLE_IDENTIFIER@</string>
+			<key>IOClass</key>
+			<string>RavynARMPE</string>
+			<key>IONameMatch</key>
+			<array>
+				<string>qemu-virt</string>
+				<string>bcm2712</string>
+			</array>
+			<key>IOProbeScore</key>
+			<integer>10000</integer>
+			<key>IOProviderClass</key>
+			<string>IOPlatformExpertDevice</string>
+		</dict>
+		<key>RavynGIC</key>
+		<dict>
+			<key>CFBundleIdentifier</key>
+			<string>@BUNDLE_IDENTIFIER@</string>
+			<key>IOClass</key>
+			<string>RavynGIC</string>
+			<key>IONameMatch</key>
+			<array>
+				<string>arm,gic-400</string>
+				<string>arm,gic-v3</string>
+			</array>
+			<key>IOProbeScore</key>
+			<integer>1000</integer>
+			<key>IOProviderClass</key>
+			<string>IOPlatformDevice</string>
+		</dict>
+	</dict>
+	<key>NSHumanReadableCopyright</key>
+	<string>Copyright © 2026 ravynOS Project. All rights reserved.</string>
+	<key>OSBundleLibraries</key>
+	<dict>
+		<key>com.apple.kpi.iokit</key>
+		<string>8.0.0</string>
+		<key>com.apple.kpi.libkern</key>
+		<string>8.0.0</string>
+		<key>com.apple.kpi.mach</key>
+		<string>8.0.0</string>
+		<key>com.apple.kpi.private</key>
+		<string>8.0.0</string>
+	</dict>
+	<key>OSBundleRequired</key>
+	<string>Root</string>
+</dict>
+</plist>

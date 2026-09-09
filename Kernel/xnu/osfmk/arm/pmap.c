@@ -38,6 +38,7 @@
 
 #include <mach/boolean.h>
 #include <kern/bits.h>
+#include <kern/kext_alloc.h>
 #include <kern/thread.h>
 #include <kern/sched.h>
 #include <kern/zalloc.h>
@@ -4789,6 +4790,37 @@ pmap_virtual_region(
 	vm_map_size_t low_global_vr_size = 0;
 #endif
 
+#if defined(__arm64__) && CONFIG_KEXT_BASEMENT
+	/*
+	 * The kext basement (kext_alloc.c) lives in the hole between virtBase and
+	 * the kernel image. Reserve the static range in two pieces around it so
+	 * kext_alloc_init() can carve its submap out of unreserved space instead
+	 * of a permanent map entry.
+	 */
+	{
+		vm_offset_t basement_base, basement_top;
+		vm_map_offset_t region0_start = TEST_PAGE_SIZE_4K ? (gVirtBase & 0xFFFFFFFFFF800000) : (gVirtBase & 0xFFFFFFFFFE000000);
+		kext_basement_bounds(&basement_base, &basement_top);
+		vm_map_offset_t region0_end = region0_start +
+		    (TEST_PAGE_SIZE_4K ? (((virtual_space_start - region0_start) + ~0xFFFFFFFFFF800000) & 0xFFFFFFFFFF800000)
+		    : (((virtual_space_start - region0_start) + ~0xFFFFFFFFFE000000) & 0xFFFFFFFFFE000000));
+
+		if (basement_base > region0_start && basement_top < region0_end) {
+			if (region_select == 0) {
+				*startp = region0_start;
+				*size = basement_base - region0_start;
+				return TRUE;
+			}
+			if (region_select == 1) {
+				*startp = basement_top;
+				*size = region0_end - basement_top;
+				return TRUE;
+			}
+			/* the remaining regions keep their historical numbering, shifted by one */
+			region_select--;
+		}
+	}
+#endif /* __arm64__ && CONFIG_KEXT_BASEMENT */
 	if (region_select == 0) {
 #if     (__ARM_VMSA__ == 7)
 		*startp = gVirtBase & 0xFFC00000;
@@ -7264,8 +7296,19 @@ pmap_protect_options_internal(
 			} else {
 #if     (__ARM_VMSA__ > 7)
 				if (pmap == kernel_pmap) {
+#if CONFIG_KEXT_BASEMENT
+					/*
+					 * Kexts are linked at boot into VM-mapped memory and then
+					 * made executable with vm_map_protect(); that is the one
+					 * legitimate path to kernel-executable dynamic memory.
+					 * vm_map_protect() already refuses write+execute.
+					 */
+					tmplate &= ~ARM_PTE_PNX;
+					tmplate |= ARM_PTE_NX;
+#else
 					/* do NOT clear "PNX"! */
 					tmplate |= ARM_PTE_NX;
+#endif
 				} else {
 					/* do NOT clear "NX"! */
 					tmplate |= pt_attr_leaf_x(pt_attr);

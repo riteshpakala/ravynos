@@ -20,8 +20,15 @@
 /* Serial console: PL011 driver in pexpert/arm/pe_serial.c */
 #define PL011_UART 1
 
-/* Interrupt controller: GICv2 driver in pexpert/arm/pe_gicv2.c */
-#define GICV2 1
+/* Interrupt controller: GICv2 or GICv3, chosen at boot (pexpert/arm/pe_gic.c) */
+#define PE_GIC 1
+
+/*
+ * Cortex-A76 implements ARMv8.1 PAN (Privileged Access Never) and the kernel
+ * takes exceptions with PAN set; without this the kernel never clears it in
+ * copyin/copyout and every access to user memory faults forever.
+ */
+#define __ARM_PAN_AVAILABLE__ 1
 
 #endif /* ! ASSEMBLER */
 

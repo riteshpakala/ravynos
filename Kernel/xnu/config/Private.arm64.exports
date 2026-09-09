@@ -50,3 +50,14 @@ _mach_bridge_init_timestamp
 _mach_bridge_set_params
 _PE_panic_debugging_enabled
 _register_additional_panic_data_buffer
+_pe_gic_present
+_pe_gic_version
+_pe_gic_num_interrupts
+_pe_gic_register
+_pe_gic_unregister
+_pe_gic_enable
+_pe_gic_disable
+_pe_gic_set_priority
+_pe_gic_set_edge
+_pe_gic_send_sgi
+_bufattr_delayidlesleep

@@ -334,6 +334,17 @@ PE_init_iokit(void)
 		KDBG_RELEASE(IOKDBG_CODE(DBG_BOOTER, 0), start_time_value, debug_wait_start_value, load_kernel_start_value, populate_registry_time_value);
 	}
 
+#if defined(BCM2712)
+	/*
+	 * Apple boards acquire the screen when their platform kext installs the
+	 * interrupt handler; the bring-up boards have no such kext yet. With -v
+	 * (text mode) vcattach() above already took the screen; otherwise take
+	 * it here for the progress indicator. NULL keeps the pre-VM framebuffer
+	 * mapping: passing PE_state.video again would treat its physical base
+	 * as a virtual address once the VM is up.
+	 */
+	PE_initialize_console(NULL, kPEAcquireScreen);
+#endif
 	StartIOKit(PE_state.deviceTreeHead, PE_state.bootArgs, (void *) 0, (void *) 0);
 }
 
